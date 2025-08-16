@@ -1,0 +1,27 @@
+// GET /api/payments/manual/pending?method=grey
+exports.getPendingManualPayments = async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const method = req.query.method;
+  try {
+    let query = `SELECT * FROM payments WHERE status = 'pending'`;
+    const params = [];
+
+    if (method) {
+      query += ` AND method = $1`;
+      params.push(method);
+    }
+
+    query += ` ORDER BY created_at DESC`;
+
+    const { rows } = await db.query(query, params);
+
+    res.status(200).json({ payments: rows });
+
+  } catch (err) {
+    console.error('Manual fetch failed', err);
+    res.status(500).json({ error: 'Failed to fetch payments' });
+  }
+};
