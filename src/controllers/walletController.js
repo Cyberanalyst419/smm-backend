@@ -1,3 +1,4 @@
+// smm-backend/src/controllers/walletController.js
 const supabase = require('../config/supabase');
 
 // ✅ Get wallet balance for logged-in user
@@ -5,10 +6,11 @@ exports.getUserBalance = async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // Adjust table name if balance is in 'users' instead of 'wallets'
     const { data, error } = await supabase
-      .from('wallets')
+      .from('wallets')  // or 'users'
       .select('balance, currency')
-      .eq('user_id', userId)
+      .eq('user_id', userId)  // or 'id' if using users table
       .single();
 
     if (error || !data) {
