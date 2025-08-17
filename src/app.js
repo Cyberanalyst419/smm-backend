@@ -12,15 +12,17 @@ dotenv.config();
 const app = express();
 
 // ===============================
-// ✅ CORS Configuration
-// Allow requests from your frontend domain
+// ✅ Global CORS Middleware
 app.use(cors({
   origin: [
-    'http://127.0.0.1:3000',             // local dev
+    'http://127.0.0.1:3000',                 // local dev
     'https://mediarocket-frontend.vercel.app' // deployed frontend
   ],
   credentials: true, // allow cookies/auth headers
 }));
+
+// Handle preflight OPTIONS requests
+app.options('*', cors());
 
 // ===============================
 // Middleware
