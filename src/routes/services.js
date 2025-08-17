@@ -1,7 +1,7 @@
 // src/routes/services.js
 const express = require('express');
 const router = express.Router();
-const authenticateToken = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 const { supabaseAdmin } = require('../config/supabase');
 
 // GET /api/services

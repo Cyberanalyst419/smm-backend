@@ -1,7 +1,7 @@
 // src/middleware/auth.js
 const { supabaseAdmin } = require('../config/supabase');
 
-module.exports = async function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
   try {
     const auth = req.headers.authorization || '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -28,4 +28,7 @@ module.exports = async function authenticateToken(req, res, next) {
     console.error('Auth middleware error:', err);
     return res.status(401).json({ message: 'Unauthorized' });
   }
-};
+}
+
+// ✅ export as object so you can destructure in app.js
+module.exports = { authenticateToken };
