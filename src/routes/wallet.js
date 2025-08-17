@@ -1,23 +1,31 @@
 // src/routes/wallet.js
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middleware/auth');
-const supabase = require('../config/supabase'); // assuming you use supabase client
+const authenticateToken = require('../middleware/auth');
+const supabase = require('../config/supabase');
 
 // GET /api/wallet/balance
-router.get('/balance', verifyToken, async (req, res) => {
+router.get('/balance', authenticateToken, async (req, res) => {
   try {
+    const { id } = req.user;
+
     const { data, error } = await supabase
       .from('wallets')
-      .select('balance')
-      .eq('user_id', req.user.id)
+      .select('balance, currency')
+      .eq('user_id', id)
       .single();
 
-    if (error) return res.status(400).json({ message: error.message });
+    if (error || !data) {
+      return res.status(404).json({ message: 'Wallet not found' });
+    }
 
-    res.json({ balance: data.balance });
+    res.json({
+      balance: data.balance,
+      currency: data.currency || 'USD'
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error('Wallet error:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 

@@ -1,5 +1,4 @@
 // src/app.js
-
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -13,23 +12,15 @@ const app = express();
 
 // ===============================
 // ✅ CORS Configuration
-// Allow requests from your frontend domain
-app.use(cors({
-  origin: [
-    'http://127.0.0.1:3000',                // local dev
-    'https://mediarocket-frontend.vercel.app' // deployed frontend
-  ],
-  credentials: true, // allow cookies/auth headers
-}));
-
-// Handle preflight requests for all routes
-app.options('*', cors({
+const corsOptions = {
   origin: [
     'http://127.0.0.1:3000',
     'https://mediarocket-frontend.vercel.app'
   ],
   credentials: true,
-}));
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // handle preflight
 
 // ===============================
 // Middleware

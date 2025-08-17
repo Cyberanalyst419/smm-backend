@@ -1,19 +1,13 @@
 // src/routes/services.js
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middleware/auth');
-const supabase = require('../config/supabase');
+const serviceController = require('../controllers/serviceController');
+const auth = require('../middleware/auth');
 
-// GET /api/services
-router.get('/', verifyToken, async (req, res) => {
-  try {
-    const { data, error } = await supabase.from('services').select('*');
-    if (error) return res.status(400).json({ message: error.message });
+// Get all services
+router.get('/', auth, serviceController.getAllServices);
 
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
+// Get services by platform
+router.get('/:platform', auth, serviceController.getByPlatform);
 
 module.exports = router;
