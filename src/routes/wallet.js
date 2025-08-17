@@ -2,29 +2,29 @@
 const express = require('express');
 const router = express.Router();
 const authenticateToken = require('../middleware/auth');
-const supabase = require('../config/supabase');
+const { supabaseAdmin } = require('../config/supabase');
 
 // GET /api/wallet/balance
 router.get('/balance', authenticateToken, async (req, res) => {
   try {
-    const { id } = req.user;
+    const userId = req.user.id;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('wallets')
       .select('balance, currency')
-      .eq('user_id', id)
+      .eq('user_id', userId)
       .single();
 
     if (error || !data) {
       return res.status(404).json({ message: 'Wallet not found' });
     }
 
-    res.json({
+    return res.json({
       balance: data.balance,
-      currency: data.currency || 'USD'
+      currency: data.currency || 'USD',
     });
   } catch (err) {
-    console.error('Wallet error:', err);
+    console.error('Wallet balance error:', err);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

@@ -5,48 +5,47 @@ const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 
-// Load environment variables
 dotenv.config();
-
 const app = express();
 
-// ===============================
-// ✅ CORS Configuration
-const corsOptions = {
-  origin: [
-    'http://127.0.0.1:3000',
-    'https://mediarocket-frontend.vercel.app'
-  ],
-  credentials: true,
-};
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // handle preflight
+// ✅ CORS
+const allowedOrigins = [
+  'http://127.0.0.1:3000',
+  'http://localhost:3000',
+  'https://mediarocket-frontend.vercel.app',
+];
 
-// ===============================
-// Middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Vary', 'Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(morgan('dev'));
 
-// ===============================
 // Routes
 const authRoutes = require('./routes/auth');
 const orderRoutes = require('./routes/orders');
 const serviceRoutes = require('./routes/services');
 const paymentRoutes = require('./routes/payments');
-const walletRoutes = require('./routes/wallet'); // ✅ Added wallet route
+const walletRoutes = require('./routes/wallet');
 
-// Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/wallet', walletRoutes); // ✅ Wallet route
+app.use('/api/wallet', walletRoutes);
 
-// ===============================
-// Health check
-app.get('/', (req, res) => {
-  res.send('SMM Backend API running.');
-});
+// Health
+app.get('/', (req, res) => res.send('SMM Backend API running.'));
 
 module.exports = app;

@@ -1,18 +1,31 @@
 // src/middleware/auth.js
-const jwt = require('jsonwebtoken');
+const { supabaseAdmin } = require('../config/supabase');
 
-module.exports = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  if (!authHeader) return res.status(401).json({ message: 'No token provided' });
-
-  const token = authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ message: 'Invalid token format' });
-
+module.exports = async function authenticateToken(req, res, next) {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
+    const auth = req.headers.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+
+    if (!token) {
+      return res.status(401).json({ message: 'Missing token' });
+    }
+
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+
+    if (error || !data?.user) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    const user = data.user;
+    req.user = {
+      id: user.id,
+      email: user.email,
+      ...user.user_metadata,
+    };
+
+    return next();
   } catch (err) {
-    return res.status(401).json({ message: 'Invalid token' });
+    console.error('Auth middleware error:', err);
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 };
