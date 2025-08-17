@@ -1,33 +1,23 @@
 // src/routes/wallet.js
-
 const express = require('express');
 const router = express.Router();
-const authenticateToken = require('../middleware/auth');
-const supabase = require('../config/supabase').supabase; // ensure correct import
+const { verifyToken } = require('../middleware/auth');
+const supabase = require('../config/supabase'); // assuming you use supabase client
 
-// GET /api/wallet/balance - Get balance of logged-in user
-router.get('/balance', authenticateToken, async (req, res) => {
+// GET /api/wallet/balance
+router.get('/balance', verifyToken, async (req, res) => {
   try {
-    const userId = req.user.id;
-
     const { data, error } = await supabase
-      .from('wallets')          // your wallets table
-      .select('balance, currency')
-      .eq('user_id', userId)
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', req.user.id)
       .single();
 
-    if (error || !data) {
-      return res.status(404).json({ message: 'Wallet not found' });
-    }
+    if (error) return res.status(400).json({ message: error.message });
 
-    return res.status(200).json({
-      balance: data.balance,
-      currency: data.currency || 'USD'
-    });
-
+    res.json({ balance: data.balance });
   } catch (err) {
-    console.error('⚠️ Wallet Fetch Error:', err.message);
-    return res.status(500).json({ message: 'Failed to fetch wallet balance' });
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
