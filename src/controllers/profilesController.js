@@ -1,13 +1,13 @@
 // src/controllers/profilesController.js
-const supabase = require('../config/supabase');
+const { supabaseAdmin } = require('../config/supabase');
 
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('users')
-      .select('id, username, email, avatar, balance')
+      .select('id, username, email, balance, avatar')
       .eq('id', userId)
       .single();
 
@@ -28,7 +28,7 @@ exports.updateProfile = async (req, res) => {
     const userId = req.user.id;
     const { email, username } = req.body;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('users')
       .update({ email, username })
       .eq('id', userId)
