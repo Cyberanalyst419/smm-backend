@@ -3,19 +3,14 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // Use service role key for server
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // server side key
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('❌ Missing Supabase credentials in .env file.');
 }
 
-let supabase;
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-try {
-  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  console.log('✅ Supabase admin client initialized successfully');
-} catch (err) {
-  console.error('❌ Failed to initialize Supabase client:', err.message);
-}
+console.log('✅ Supabase admin client initialized successfully');
 
-module.exports = supabase;
+module.exports = supabase; // <-- export the client directly
