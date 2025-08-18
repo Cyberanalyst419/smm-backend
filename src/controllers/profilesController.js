@@ -1,47 +1,41 @@
-const { supabase } = require('../config/supabase');
+const supabase = require('../config/supabase');
 
-// GET /api/profile
 exports.getProfile = async (req, res) => {
-  try {
-    const userId = req.user.id; // comes from auth middleware
+  const userId = req.user.id;
 
+  try {
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, email, balance, avatar, full_name')
+      .select('id, username, email, avatar')
       .eq('id', userId)
       .single();
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
+    if (error) return res.status(400).json({ error: error.message });
 
     res.json(data);
   } catch (err) {
-    console.error('Error fetching profile:', err);
-    res.status(500).json({ error: 'Server error fetching profile' });
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
-// PUT /api/profile/update (optional)
 exports.updateProfile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { username, email, avatar, full_name } = req.body;
+  const userId = req.user.id;
+  const { username, email, avatar } = req.body;
 
+  try {
     const { data, error } = await supabase
       .from('users')
-      .update({ username, email, avatar, full_name })
+      .update({ username, email, avatar })
       .eq('id', userId)
       .select()
       .single();
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
+    if (error) return res.status(400).json({ error: error.message });
 
-    res.json({ message: 'Profile updated successfully', data });
+    res.json(data);
   } catch (err) {
-    console.error('Error updating profile:', err);
-    res.status(500).json({ error: 'Server error updating profile' });
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
 };

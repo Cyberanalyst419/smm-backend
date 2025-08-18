@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const profilesController = require('../controllers/profilesController');
-const auth = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
-// 🔐 Get current user profile
-router.get('/', auth, profilesController.getProfile);
+// GET user profile
+router.get('/', authenticateToken, profilesController.getProfile);
 
-// 🔐 Update current user profile (optional)
-router.put('/update', auth, profilesController.updateProfile);
+// PUT update profile
+router.put('/update', authenticateToken, profilesController.updateProfile);
 
 module.exports = router;
