@@ -1,32 +1,28 @@
 // src/routes/wallet.js
 const express = require('express');
 const router = express.Router();
-const authenticateToken = require('../middleware/auth');
-const { supabaseAdmin } = require('../config/supabase');
+const { authenticateToken } = require('../middleware/auth');
+const pool = require('../config/database'); // PostgreSQL pool
 
 // GET /api/wallet/balance
 router.get('/balance', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { data, error } = await supabaseAdmin
-      .from('wallets')
-      .select('balance, currency')
-      .eq('user_id', userId)
-      .single();
+    const result = await pool.query(
+      'SELECT balance, currency FROM wallets WHERE user_id = $1',
+      [userId]
+    );
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return res.status(500).json({ message: 'Failed to fetch wallet balance' });
-    }
-
-    if (!data) {
+    if (!result.rows.length) {
       return res.status(404).json({ message: 'Wallet not found' });
     }
 
+    const wallet = result.rows[0];
+
     res.json({
-      balance: parseFloat(data.balance) || 0,
-      currency: data.currency || 'USD',
+      balance: parseFloat(wallet.balance) || 0,
+      currency: wallet.currency || 'USD',
     });
   } catch (err) {
     console.error('Wallet balance error:', err);
@@ -44,32 +40,22 @@ router.post('/add-funds', authenticateToken, async (req, res) => {
   }
 
   try {
-    // Call RPC to add funds
-    const { error } = await supabaseAdmin.rpc('add_funds', {
-      user_id_input: userId,
-      amount_input: parseFloat(amount)
-    });
+    // Update balance
+    const updateResult = await pool.query(
+      'UPDATE wallets SET balance = balance + $1 WHERE user_id = $2 RETURNING balance, currency',
+      [parseFloat(amount), userId]
+    );
 
-    if (error) {
-      console.error('Add funds RPC error:', error);
-      return res.status(500).json({ message: 'Failed to add funds' });
+    if (!updateResult.rows.length) {
+      return res.status(404).json({ message: 'Wallet not found' });
     }
 
-    // Fetch updated balance
-    const { data: wallet, error: walletError } = await supabaseAdmin
-      .from('wallets')
-      .select('balance, currency')
-      .eq('user_id', userId)
-      .single();
-
-    if (walletError || !wallet) {
-      return res.status(500).json({ message: 'Failed to retrieve updated balance' });
-    }
+    const wallet = updateResult.rows[0];
 
     res.json({
       message: `Successfully added ${amount} to wallet`,
       balance: parseFloat(wallet.balance),
-      currency: wallet.currency || 'USD'
+      currency: wallet.currency || 'USD',
     });
   } catch (err) {
     console.error('Add funds error:', err);

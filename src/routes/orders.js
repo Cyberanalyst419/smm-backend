@@ -4,7 +4,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const isAdmin = require('../middleware/isAdmin');
 const orderController = require('../controllers/orderController');
-const { supabaseAdmin } = require('../config/supabase');
+const pool = require('../config/database'); // PostgreSQL pool
 
 // 🔐 Authenticated user creates a new order
 router.post('/', authenticateToken, orderController.createOrder);
@@ -17,16 +17,12 @@ router.get('/', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { data, error } = await supabaseAdmin
-      .from('orders')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    const result = await pool.query(
+      `SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC`,
+      [userId]
+    );
 
-    if (error) {
-      console.error('Supabase error fetching user orders:', error);
-      return res.status(500).json({ error: 'Failed to fetch user orders' });
-    }
+    const data = result.rows;
 
     // Ensure numeric and optional fields are safe
     const orders = data.map(order => ({

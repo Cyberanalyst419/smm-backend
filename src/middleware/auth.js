@@ -1,5 +1,5 @@
 // src/middleware/auth.js
-const { supabaseAdmin } = require('../config/supabase');
+const jwt = require('jsonwebtoken');
 
 async function authenticateToken(req, res, next) {
   try {
@@ -10,25 +10,26 @@ async function authenticateToken(req, res, next) {
       return res.status(401).json({ message: 'Missing token' });
     }
 
-    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    // Verify JWT using your backend secret
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+      if (err) {
+        console.error('JWT verification error:', err);
+        return res.status(401).json({ message: 'Invalid token' });
+      }
 
-    if (error || !data?.user) {
-      return res.status(401).json({ message: 'Invalid token' });
-    }
+      // Attach user info to request
+      req.user = {
+        id: user.id,
+        email: user.email,
+        ...user.user_metadata, // preserve any custom fields
+      };
 
-    const user = data.user;
-    req.user = {
-      id: user.id,
-      email: user.email,
-      ...user.user_metadata,
-    };
-
-    return next();
+      next();
+    });
   } catch (err) {
     console.error('Auth middleware error:', err);
     return res.status(401).json({ message: 'Unauthorized' });
   }
 }
 
-// ✅ export as object so you can destructure in app.js
 module.exports = { authenticateToken };

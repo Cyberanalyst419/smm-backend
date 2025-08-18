@@ -2,28 +2,20 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const { supabaseAdmin } = require('../config/supabase');
+const pool = require('../config/database'); // PostgreSQL pool
 
 // GET /api/services
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('services')
-      .select('*')
-      .order('platform', { ascending: true })
-      .order('category', { ascending: true });
+    const result = await pool.query(
+      `SELECT * FROM services ORDER BY platform ASC, category ASC`
+    );
 
-    if (error) {
-      console.error('Supabase error fetching services:', error);
-      return res.status(500).json({ message: 'Failed to fetch services' });
-    }
-
-    if (!data || data.length === 0) {
+    if (!result.rows || result.rows.length === 0) {
       return res.json([]);
     }
 
-    // Ensure numeric fields are numbers (price, min, max)
-    const services = data.map(service => ({
+    const services = result.rows.map(service => ({
       ...service,
       price: parseFloat(service.price) || 0,
       min: parseInt(service.min) || 0,

@@ -23,16 +23,16 @@ exports.register = async (req, res) => {
     }
 
     // 2. Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10); // from query() style
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. Insert user into Supabase
+    // 3. Insert user
     const { data: newUserRow, error: insertError } = await supabase
       .from('users')
       .insert([
         {
           username,
           email,
-          password_hash: hashedPassword, // keep Supabase column
+          password_hash: hashedPassword,
           balance: 0.0,
           role: 'user'
         }
@@ -45,7 +45,8 @@ exports.register = async (req, res) => {
     const newUser = {
       id: newUserRow.id,
       username: newUserRow.username,
-      email: newUserRow.email
+      email: newUserRow.email,
+      role: newUserRow.role
     };
 
     // 4. Create user profile
@@ -73,9 +74,8 @@ exports.register = async (req, res) => {
     if (walletError) throw walletError;
 
     return res.status(201).json({ user: newUser, message: 'Registration successful.' });
-
   } catch (err) {
-    console.error(err);
+    console.error('Registration error:', err);
     return res.status(500).json({
       message: 'Registration failed.',
       error: err.message
@@ -104,13 +104,14 @@ exports.login = async (req, res) => {
 
     const user = users[0];
 
-    const match = await bcrypt.compare(password, user.password_hash); // query() style compare
+    const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
+    // ✅ Generate JWT
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role }, // richer payload
+      { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -124,9 +125,8 @@ exports.login = async (req, res) => {
         role: user.role
       }
     });
-
   } catch (err) {
-    console.error(err);
+    console.error('Login error:', err);
     return res.status(500).json({
       message: 'Login failed.',
       error: err.message
