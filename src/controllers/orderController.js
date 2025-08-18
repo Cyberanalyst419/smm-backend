@@ -4,14 +4,24 @@ const { placeOrder, getOrderStatus } = require('../services/apiClient');
 // 🔹 User places an order
 exports.createOrder = async (req, res) => {
   const userId = req.user.id;
-  const { service_id, link, quantity } = req.body;
+  const {
+    service_id,
+    service_name,
+    link,
+    quantity,
+    price_usd,
+    price_converted,
+    currency,
+    speed,
+    guarantee
+  } = req.body;
 
   if (!service_id || !link || !quantity) {
     return res.status(400).json({ error: 'Service, link, and quantity are required' });
   }
 
   try {
-    // 1. Fetch service price
+    // 1. Fetch service price to verify
     const { data: service, error: serviceError } = await supabase
       .from('services')
       .select('price')
@@ -20,8 +30,7 @@ exports.createOrder = async (req, res) => {
 
     if (serviceError || !service) return res.status(404).json({ error: 'Service not found' });
 
-    const pricePerUnit = parseFloat(service.price);
-    const totalCost = pricePerUnit * parseInt(quantity);
+    const totalPriceUSD = parseFloat(service.price) * parseInt(quantity);
 
     // 2. Check wallet balance
     const { data: wallet, error: walletError } = await supabase
@@ -30,7 +39,7 @@ exports.createOrder = async (req, res) => {
       .eq('user_id', userId)
       .single();
 
-    if (walletError || !wallet || parseFloat(wallet.balance) < totalCost) {
+    if (walletError || !wallet || parseFloat(wallet.balance) < totalPriceUSD) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
@@ -53,11 +62,17 @@ exports.createOrder = async (req, res) => {
         {
           user_id: userId,
           service_id,
+          service_name,
           link,
-          quantity,
-          total_cost: totalCost,
+          quantity: parseInt(quantity),
+          price_usd: parseFloat(price_usd) || totalPriceUSD,
+          price_converted: parseFloat(price_converted) || totalPriceUSD,
+          currency: currency || 'USD',
+          speed: speed || 'N/A',
+          guarantee: guarantee || 'N/A',
           status,
-          external_order_id: apiOrderId
+          external_order_id: apiOrderId,
+          progress: 0
         }
       ])
       .select()
@@ -65,11 +80,11 @@ exports.createOrder = async (req, res) => {
 
     if (insertError) throw insertError;
 
-    // 5. Deduct balance if order was placed
+    // 5. Deduct balance if order was placed successfully
     if (status === 'processing') {
       const { error: updateError } = await supabase.rpc('deduct_balance', {
         user_id_input: userId,
-        amount_input: totalCost
+        amount_input: totalPriceUSD
       });
       if (updateError) throw updateError;
     }
@@ -79,7 +94,7 @@ exports.createOrder = async (req, res) => {
         ? 'Order queued. We will retry shortly.'
         : 'Order placed successfully.',
       status,
-      cost: totalCost,
+      cost: totalPriceUSD,
       order_id: newOrder.id,
       external_order_id: apiOrderId || null
     });
@@ -180,7 +195,19 @@ exports.getUserOrders = async (req, res) => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    res.json({ orders: data });
+
+    const orders = data.map(order => ({
+      ...order,
+      quantity: parseInt(order.quantity) || 0,
+      price_usd: parseFloat(order.price_usd) || 0,
+      price_converted: parseFloat(order.price_converted) || 0,
+      progress: parseInt(order.progress) || 0,
+      status: order.status || 'pending',
+      speed: order.speed || 'N/A',
+      guarantee: order.guarantee || 'N/A'
+    }));
+
+    res.json({ orders });
   } catch (err) {
     console.error('Fetch user orders failed:', err.message);
     res.status(500).json({ error: 'Failed to fetch orders' });

@@ -23,8 +23,24 @@ router.get('/', authenticateToken, async (req, res) => {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    res.json(data);
+    if (error) {
+      console.error('Supabase error fetching user orders:', error);
+      return res.status(500).json({ error: 'Failed to fetch user orders' });
+    }
+
+    // Ensure numeric and optional fields are safe
+    const orders = data.map(order => ({
+      ...order,
+      quantity: parseInt(order.quantity) || 0,
+      price_usd: parseFloat(order.price_usd) || 0,
+      price_converted: parseFloat(order.price_converted) || 0,
+      progress: parseInt(order.progress) || 0,
+      status: order.status || 'pending',
+      speed: order.speed || 'N/A',
+      guarantee: order.guarantee || 'N/A'
+    }));
+
+    res.json(orders);
   } catch (err) {
     console.error('Error fetching user orders:', err);
     res.status(500).json({ error: 'Failed to fetch user orders' });
