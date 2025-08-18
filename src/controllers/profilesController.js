@@ -1,14 +1,13 @@
-// src/controllers/profilesController.js
 const supabase = require('../config/supabase');
 
-// GET /api/profile
+// ======== GET USER PROFILE ========
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, email, balance, full_name, avatar')
+      .select('id, username, email, avatar, balance')
       .eq('id', userId)
       .single();
 
@@ -24,15 +23,15 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// PUT /api/profile
+// ======== UPDATE USER PROFILE ========
 exports.updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { email, username, full_name, avatar } = req.body;
+    const { email, username, avatar } = req.body;
 
     const { data, error } = await supabase
       .from('users')
-      .update({ email, username, full_name, avatar })
+      .update({ email, username, avatar })
       .eq('id', userId)
       .select()
       .single();
