@@ -1,8 +1,6 @@
-// src/app.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 
 const authRoutes = require('./routes/auth');
 const serviceRoutes = require('./routes/services');
@@ -14,9 +12,16 @@ const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
+// ✅ Middleware
+
+// Allow requests only from your frontend domain
+app.use(cors({
+  origin: 'https://mediarocket-frontend.vercel.app',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json()); // replaces body-parser
 
 // Public routes (no auth required)
 app.use('/api/auth', authRoutes);
