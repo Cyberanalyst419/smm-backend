@@ -7,6 +7,7 @@ const serviceRoutes = require('./routes/services');
 const orderRoutes = require('./routes/orders');
 const paymentRoutes = require('./routes/payments');
 const walletRoutes = require('./routes/wallet');
+const profileRoutes = require('./routes/profile'); // ✅ Added profile routes
 
 const { authenticateToken } = require('./middleware/auth');
 
@@ -46,6 +47,7 @@ app.use('/api/services', authenticateToken, serviceRoutes);
 app.use('/api/orders', authenticateToken, orderRoutes);
 app.use('/api/payments', authenticateToken, paymentRoutes);
 app.use('/api/wallet', authenticateToken, walletRoutes);
+app.use('/api/profile', authenticateToken, profileRoutes); // ✅ Mounted profile routes
 
 // ✅ Root endpoint
 app.get('/', (req, res) => {

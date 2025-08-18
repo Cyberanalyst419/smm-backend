@@ -1,47 +1,47 @@
-const supabase = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 
-// 🔹 Get user profile
+// GET /api/profile
 exports.getProfile = async (req, res) => {
-  const userId = req.user.id;
-
   try {
+    const userId = req.user.id; // comes from auth middleware
+
     const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', userId)
+      .from('users')
+      .select('id, username, email, balance, avatar, full_name')
+      .eq('id', userId)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
 
-    res.status(200).json(data);
+    res.json(data);
   } catch (err) {
-    console.error('⚠️ Get Profile Error:', err.message);
-    res.status(500).json({
-      message: 'Failed to load profile.',
-      error: err.message,
-    });
+    console.error('Error fetching profile:', err);
+    res.status(500).json({ error: 'Server error fetching profile' });
   }
 };
 
-// 🔹 Update user profile
+// PUT /api/profile/update (optional)
 exports.updateProfile = async (req, res) => {
-  const userId = req.user.id;
-  const { full_name, avatar, bio } = req.body;
-
   try {
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ full_name, avatar, bio })
-      .eq('user_id', userId);
+    const userId = req.user.id;
+    const { username, email, avatar, full_name } = req.body;
 
-    if (error) throw error;
+    const { data, error } = await supabase
+      .from('users')
+      .update({ username, email, avatar, full_name })
+      .eq('id', userId)
+      .select()
+      .single();
 
-    res.status(200).json({ message: 'Profile updated successfully.' });
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ message: 'Profile updated successfully', data });
   } catch (err) {
-    console.error('⚠️ Update Profile Error:', err.message);
-    res.status(500).json({
-      message: 'Failed to update profile.',
-      error: err.message,
-    });
+    console.error('Error updating profile:', err);
+    res.status(500).json({ error: 'Server error updating profile' });
   }
 };

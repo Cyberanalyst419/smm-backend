@@ -3,8 +3,10 @@ const router = express.Router();
 const profilesController = require('../controllers/profilesController');
 const auth = require('../middleware/auth');
 
-// 🔐 User profile routes
+// 🔐 Get current user profile
 router.get('/', auth, profilesController.getProfile);
+
+// 🔐 Update current user profile (optional)
 router.put('/update', auth, profilesController.updateProfile);
 
 module.exports = router;
