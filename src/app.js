@@ -12,32 +12,46 @@ const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 
-// ✅ Middleware
+// ✅ Allowed frontend origins
+const allowedOrigins = [
+  'https://mediarocket-frontend.vercel.app',
+  'http://localhost:3000' // optional, for local dev
+];
 
-// Allow requests only from your frontend domain
+// ✅ CORS Middleware
 app.use(cors({
-  origin: 'https://mediarocket-frontend.vercel.app',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true); // allow non-browser requests
+    if (allowedOrigins.indexOf(origin) === -1) {
+      return callback(new Error('CORS policy blocked this origin'), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json()); // replaces body-parser
+// ✅ Handle preflight requests
+app.options('*', cors());
 
-// Public routes (no auth required)
+// ✅ Built-in middleware to parse JSON
+app.use(express.json());
+
+// ✅ Public routes (no auth required)
 app.use('/api/auth', authRoutes);
 
-// Protected routes (auth required)
+// ✅ Protected routes (auth required)
 app.use('/api/services', authenticateToken, serviceRoutes);
 app.use('/api/orders', authenticateToken, orderRoutes);
 app.use('/api/payments', authenticateToken, paymentRoutes);
 app.use('/api/wallet', authenticateToken, walletRoutes);
 
-// Root endpoint
+// ✅ Root endpoint
 app.get('/', (req, res) => {
   res.send('✅ SMM Backend API is running!');
 });
 
-// Error handler
+// ✅ Global error handler
 app.use((err, req, res, next) => {
   console.error('❌ Server Error:', err);
   res.status(500).json({ error: 'Internal server error' });
