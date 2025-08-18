@@ -15,18 +15,18 @@ const app = express();
 // ✅ Allowed frontend origins
 const allowedOrigins = [
   'https://mediarocket-frontend.vercel.app',
-  'http://localhost:3000' // optional, for local dev
+  'http://localhost:3000', // local dev
+  undefined // allow Postman / curl
 ];
 
 // ✅ CORS Middleware
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin) return callback(null, true); // allow non-browser requests (Postman, server)
-    if (allowedOrigins.indexOf(origin) === -1) {
-      console.warn('Blocked CORS request from:', origin);
-      return callback(new Error('CORS policy blocked this origin'), false);
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
-    return callback(null, true);
+    console.warn('Blocked CORS request from:', origin);
+    return callback(new Error('CORS policy blocked this origin'), false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -55,7 +55,7 @@ app.get('/', (req, res) => {
 // ✅ Global error handler
 app.use((err, req, res, next) => {
   console.error('❌ Server Error:', err.message || err);
-  
+
   if (err.message && err.message.includes('CORS')) {
     return res.status(403).json({ error: 'CORS policy blocked this origin' });
   }

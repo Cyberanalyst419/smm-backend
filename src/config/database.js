@@ -3,25 +3,16 @@ require('dotenv').config();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  max: 10,            // limit max clients
-  idleTimeoutMillis: 30000, // close idle clients after 30s
-  connectionTimeoutMillis: 5000,
-  family: 4
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
-// Query wrapper
-const query = (text, params) => pool.query(text, params);
+pool.on('connect', () => {
+  console.log('✅ Database connected at:', new Date().toISOString());
+});
 
-// Test connection
-(async () => {
-  try {
-    const res = await pool.query('SELECT NOW()');
-    console.log('✅ Database connected at:', res.rows[0].now);
-  } catch (err) {
-    console.error('❌ Database connection failed:', err.message);
-    process.exit(1); // exit if DB not available
-  }
-})();
+pool.on('error', (err) => {
+  console.error('❌ Database connection error:', err);
+  process.exit(-1);
+});
 
-module.exports = { query, pool };
+module.exports = pool;

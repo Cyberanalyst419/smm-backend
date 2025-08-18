@@ -1,135 +1,103 @@
+// smm-backend/src/controllers/authController.js
+const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const supabase = require('../config/supabase'); // unified client
 
-// ✅ REGISTER
+const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
+
+// ================= REGISTER =================
 exports.register = async (req, res) => {
-  const { username, email, password } = req.body;
-
-  if (!username || !email || !password) {
-    return res.status(400).json({ message: 'All fields are required.' });
-  }
-
   try {
-    // 1. Check if user already exists
-    const { data: existingUsers, error: selectError } = await supabase
-      .from('users')
-      .select('*')
-      .or(`email.eq.${email},username.eq.${username}`);
+    const { username, email, password } = req.body;
 
-    if (selectError) throw selectError;
-    if (existingUsers.length > 0) {
-      return res.status(400).json({ message: 'Username or email already taken.' });
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'All fields are required' });
     }
 
-    // 2. Hash the password
+    // Check if user exists
+    const userExists = await pool.query(
+      'SELECT * FROM users WHERE email = $1 OR username = $2',
+      [email, username]
+    );
+
+    if (userExists.rows.length > 0) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. Insert user
-    const { data: newUserRow, error: insertError } = await supabase
-      .from('users')
-      .insert([
-        {
-          username,
-          email,
-          password_hash: hashedPassword,
-          balance: 0.0,
-          role: 'user'
-        }
-      ])
-      .select()
-      .single();
+    // Insert user (👉 use password_hash column)
+    const newUser = await pool.query(
+      `INSERT INTO users (username, email, password_hash, role, balance)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, username, email, role, balance`,
+      [username, email, hashedPassword, 'user', 0.0]
+    );
 
-    if (insertError) throw insertError;
+    const user = newUser.rows[0];
 
-    const newUser = {
-      id: newUserRow.id,
-      username: newUserRow.username,
-      email: newUserRow.email,
-      role: newUserRow.role
-    };
-
-    // 4. Create user profile
-    const { error: profileError } = await supabase.from('user_profiles').insert([
-      {
-        user_id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        full_name: '',
-        avatar: `https://i.pravatar.cc/150?u=${newUser.email}`,
-        bio: '',
-        status: 'active'
-      }
-    ]);
-    if (profileError) throw profileError;
-
-    // 5. Create wallet
-    const { error: walletError } = await supabase.from('wallets').insert([
-      {
-        user_id: newUser.id,
-        balance: 0.0,
-        currency: 'USD'
-      }
-    ]);
-    if (walletError) throw walletError;
-
-    return res.status(201).json({ user: newUser, message: 'Registration successful.' });
-  } catch (err) {
-    console.error('Registration error:', err);
-    return res.status(500).json({
-      message: 'Registration failed.',
-      error: err.message
-    });
-  }
-};
-
-// ✅ LOGIN
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required.' });
-  }
-
-  try {
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email);
-
-    if (error) throw error;
-    if (!users || users.length === 0) {
-      return res.status(401).json({ message: 'Invalid credentials.' });
-    }
-
-    const user = users[0];
-
-    const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) {
-      return res.status(401).json({ message: 'Invalid credentials.' });
-    }
-
-    // ✅ Generate JWT
+    // Create JWT
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    return res.json({
+    res.status(201).json({
+      message: 'User registered successfully',
+      token,
+      user,
+    });
+  } catch (err) {
+    console.error('❌ Register Error:', err);
+    res.status(500).json({ error: 'Server error during registration' });
+  }
+};
+
+// ================= LOGIN =================
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Get user by email
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+
+    // Check password (👉 compare with password_hash)
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+
+    // Create JWT
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Login successful',
       token,
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role
-      }
+        role: user.role,
+        balance: user.balance,
+      },
     });
   } catch (err) {
-    console.error('Login error:', err);
-    return res.status(500).json({
-      message: 'Login failed.',
-      error: err.message
-    });
+    console.error('❌ Login Error:', err);
+    res.status(500).json({ error: 'Server error during login' });
   }
 };
