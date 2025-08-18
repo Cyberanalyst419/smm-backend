@@ -1,13 +1,13 @@
 const supabase = require('../config/supabase');
 
-// ======== GET USER PROFILE ========
+// GET PROFILE
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, email, avatar, balance')
+      .select('id, username, full_name, email, avatar, balance')
       .eq('id', userId)
       .single();
 
@@ -23,15 +23,15 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// ======== UPDATE USER PROFILE ========
+// UPDATE PROFILE
 exports.updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { email, username, avatar } = req.body;
+    const { email, username, full_name, avatar } = req.body;
 
     const { data, error } = await supabase
       .from('users')
-      .update({ email, username, avatar })
+      .update({ email, username, full_name, avatar })
       .eq('id', userId)
       .select()
       .single();
