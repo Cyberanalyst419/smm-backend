@@ -21,8 +21,9 @@ const allowedOrigins = [
 // ✅ CORS Middleware
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin) return callback(null, true); // allow non-browser requests
+    if (!origin) return callback(null, true); // allow non-browser requests (Postman, server)
     if (allowedOrigins.indexOf(origin) === -1) {
+      console.warn('Blocked CORS request from:', origin);
       return callback(new Error('CORS policy blocked this origin'), false);
     }
     return callback(null, true);
@@ -53,7 +54,12 @@ app.get('/', (req, res) => {
 
 // ✅ Global error handler
 app.use((err, req, res, next) => {
-  console.error('❌ Server Error:', err);
+  console.error('❌ Server Error:', err.message || err);
+  
+  if (err.message && err.message.includes('CORS')) {
+    return res.status(403).json({ error: 'CORS policy blocked this origin' });
+  }
+
   res.status(500).json({ error: 'Internal server error' });
 });
 
