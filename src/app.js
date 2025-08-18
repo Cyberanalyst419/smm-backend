@@ -15,13 +15,13 @@ const app = express();
 // ✅ Allowed frontend origins
 const allowedOrigins = [
   'https://mediarocket-frontend.vercel.app',
-  'http://localhost:3000', // local dev
-  undefined // allow Postman / curl
+  'http://localhost:3000' // local dev
 ];
 
 // ✅ CORS Middleware
 app.use(cors({
   origin: function(origin, callback) {
+    // allow requests with no origin (Postman, curl) or from allowedOrigins
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
@@ -29,7 +29,7 @@ app.use(cors({
     return callback(new Error('CORS policy blocked this origin'), false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Origin', 'Content-Type', 'Authorization']
 }));
 
 // ✅ Handle preflight requests
