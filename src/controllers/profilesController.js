@@ -1,25 +1,19 @@
 // src/controllers/profilesController.js
-
 const { supabaseAdmin } = require('../config/supabase');
 
-// ==========================
-// Get User Profile
-// ==========================
+// Fetch user profile
 exports.getProfile = async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const userId = req.user.id;
 
     const { data, error } = await supabaseAdmin
       .from('users')
-      .select('id, username, email, balance, avatar, full_name')
+      .select('id, username, email, avatar, full_name, balance')
       .eq('id', userId)
       .single();
 
     if (error) {
-      console.error('Supabase error (getProfile):', error);
+      console.error('Supabase error:', error);
       return res.status(500).json({ error: error.message });
     }
 
@@ -30,16 +24,10 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// ==========================
-// Update User Profile
-// ==========================
+// Update user profile
 exports.updateProfile = async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
+    const userId = req.user.id;
     const { username, email, avatar, full_name } = req.body;
 
     const { data, error } = await supabaseAdmin
@@ -50,7 +38,7 @@ exports.updateProfile = async (req, res) => {
       .single();
 
     if (error) {
-      console.error('Supabase error (updateProfile):', error);
+      console.error('Supabase error:', error);
       return res.status(500).json({ error: error.message });
     }
 
