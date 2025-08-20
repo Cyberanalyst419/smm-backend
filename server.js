@@ -35,13 +35,19 @@ app.listen(PORT, async () => {
     console.error("❌ Supabase admin client is not initialized. Check your .env file.");
   } else {
     try {
-      const { data, error } = await supabaseAdmin.from("users").select("id").limit(1);
+      // 👉 Change this to a table that exists in your Supabase project
+      const TEST_TABLE = "profiles"; // fallback example, replace if needed
+
+      const { data, error } = await supabaseAdmin
+        .from(TEST_TABLE)
+        .select("*")
+        .limit(1);
 
       if (error) {
-        console.error("❌ Supabase test query failed:", error.message);
-        console.error("💡 Hint: Double check your SUPABASE_SERVICE_ROLE_KEY in .env");
+        console.error(`❌ Supabase test query on [${TEST_TABLE}] failed:`, error.message);
+        console.error("💡 Hint: Ensure the table exists and the service role key is correct.");
       } else {
-        console.log("✅ Supabase connected successfully. Sample user:", data);
+        console.log(`✅ Supabase connected successfully. Sample from [${TEST_TABLE}]:`, data);
       }
     } catch (err) {
       console.error("❌ Supabase startup error:", err.message);
