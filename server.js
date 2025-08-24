@@ -5,6 +5,13 @@
 // ===============================
 require("dotenv").config();
 
+// Debug: confirm dotenv loaded something
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("❌ Missing Supabase environment variables. Check your .env file!");
+  console.log("🔎 SUPABASE_URL:", process.env.SUPABASE_URL);
+  console.log("🔎 SERVICE_ROLE_KEY length:", process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0);
+}
+
 // ===============================
 // 🚀 Import Express app
 // ===============================
@@ -35,8 +42,8 @@ app.listen(PORT, async () => {
     console.error("❌ Supabase admin client is not initialized. Check your .env file.");
   } else {
     try {
-      // 👉 Change this to a table that exists in your Supabase project
-      const TEST_TABLE = "profiles"; // fallback example, replace if needed
+      // 👉 Change this to a table that you know exists
+      const TEST_TABLE = "profiles"; 
 
       const { data, error } = await supabaseAdmin
         .from(TEST_TABLE)
