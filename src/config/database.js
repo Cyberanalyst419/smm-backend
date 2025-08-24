@@ -1,17 +1,21 @@
+// src/config/database.js
 const { Pool } = require('pg');
 require('dotenv').config();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: false }
+    : false,
 });
 
+// Logs for monitoring connections
 pool.on('connect', () => {
-  console.log('✅ Database connected at:', new Date().toISOString());
+  console.log('✅ Database connected:', new Date().toISOString());
 });
 
 pool.on('error', (err) => {
-  console.error('❌ Database connection error:', err);
+  console.error('❌ Database connection error:', err.message);
   process.exit(-1);
 });
 
