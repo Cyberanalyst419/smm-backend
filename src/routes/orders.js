@@ -36,6 +36,9 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// 💰 Get total spending of authenticated user
+router.get('/total-spent', authenticateToken, orderController.getTotalSpent);
+
 // ✅ Admin-only: Get all orders
 router.get('/all', authenticateToken, isAdmin, orderController.getAllOrders);
 

@@ -148,6 +148,25 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
+// 💰 User total spending
+exports.getTotalSpent = async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT COALESCE(SUM(price_usd), 0) AS total_spent
+       FROM orders
+       WHERE user_id = $1`,
+      [userId]
+    );
+
+    res.json({ total_spent: parseFloat(rows[0].total_spent) });
+  } catch (err) {
+    console.error('Total spending fetch failed:', err.message);
+    res.status(500).json({ error: 'Failed to fetch total spending' });
+  }
+};
+
 // 🔁 Admin - Resubmit failed/queued order (refund after max retries)
 exports.resubmitOrder = async (req, res) => {
   // same as before (keeping Supabase for now)
