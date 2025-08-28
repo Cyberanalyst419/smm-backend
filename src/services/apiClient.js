@@ -4,19 +4,20 @@ require('dotenv').config();
 
 // Create axios client with TLS settings
 const smmApiClient = axios.create({
-  baseURL: 'https://boostprovider.com/api/v2',
+  baseURL: 'https://justanotherpanel.com/api/v2',
   headers: {
     'Content-Type': 'application/json'
   },
   httpsAgent: new https.Agent({
     keepAlive: true,
-    rejectUnauthorized: false // bypass SSL issues if BoostProvider uses non-standard certs
+    rejectUnauthorized: false // JAP has a valid cert, but this is safe fallback
   })
 });
 
-const API_KEY = process.env.BOOST_API_KEY; // ✅ Must be defined in .env
+// 🔑 Use JAP API Key from .env
+const API_KEY = process.env.JAP_API_KEY; 
 
-// 📤 Place a new order with BoostProvider
+// 📤 Place a new order with JAP
 async function placeOrder({ service, link, quantity }) {
   try {
     const response = await smmApiClient.post('/', {
@@ -28,14 +29,14 @@ async function placeOrder({ service, link, quantity }) {
     });
 
     if (response.data.error) {
-      console.error('❌ BoostProvider Order Error:', response.data.error);
+      console.error('❌ JAP Order Error:', response.data.error);
       return { error: response.data.error };
     }
 
     return { order: response.data.order }; // ✅ Success
   } catch (err) {
-    console.error('❌ Failed to place order:', err.message);
-    return { error: 'Failed to connect to BoostProvider' };
+    console.error('❌ Failed to place JAP order:', err.message);
+    return { error: 'Failed to connect to JAP' };
   }
 }
 
@@ -49,13 +50,13 @@ async function getOrderStatus(orderId) {
     });
 
     if (response.data.error) {
-      console.error('❌ BoostProvider Status Error:', response.data.error);
+      console.error('❌ JAP Status Error:', response.data.error);
       return 'error';
     }
 
     return response.data.status || 'unknown';
   } catch (err) {
-    console.error('❌ Failed to get order status:', err.message);
+    console.error('❌ Failed to get JAP order status:', err.message);
     return 'error';
   }
 }

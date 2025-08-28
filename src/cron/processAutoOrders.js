@@ -1,8 +1,7 @@
 // smm-backend/src/cron/processAutoOrders.js
 
 const db = require('../config/database');
-// ✅ Corrected import
-const { placeOrder } = require('../services/apiClient');
+const { placeOrder } = require('../services/apiClient'); // JAP client
 
 async function processAutoOrders() {
   console.log("📌 Checking auto orders...");
@@ -29,11 +28,11 @@ async function processAutoOrders() {
 
       if (!shouldRun) continue;
 
-      console.log(`🚀 Placing auto order #${order.id} (${order.service_id})`);
+      console.log(`🚀 Placing auto order #${order.id} (Service: ${order.service_id})`);
 
-      // 3️⃣ Place a new order with BoostProvider
+      // 3️⃣ Place a new order with JAP
       const result = await placeOrder({
-        service: order.service_id,
+        service: order.service_id,   // ✅ JAP service ID
         link: order.link,
         quantity: order.quantity,
       });
@@ -45,14 +44,15 @@ async function processAutoOrders() {
 
       // 4️⃣ Save the new order in orders table
       await db.query(
-        `INSERT INTO orders (user_id, service_id, link, quantity, external_order_id, status)
+        `INSERT INTO orders 
+          (user_id, service, link, quantity, external_order_id, status) 
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [
           order.user_id,
-          order.service_id,
+          order.service_id, // ✅ Keep consistent with provider ID field
           order.link,
           order.quantity,
-          result.order,
+          result.order,     // external_order_id from JAP
           'pending',
         ]
       );
@@ -63,7 +63,7 @@ async function processAutoOrders() {
         [order.id]
       );
 
-      console.log(`✅ Auto order #${order.id} placed successfully.`);
+      console.log(`✅ Auto order #${order.id} placed successfully (JAP Order ID: ${result.order}).`);
     }
   } catch (error) {
     console.error("❌ Auto order cron error:", error.message);

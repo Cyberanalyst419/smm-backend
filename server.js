@@ -1,5 +1,3 @@
-// server.js
-
 // ===============================
 // 🌍 Load environment variables
 // ===============================
@@ -26,7 +24,7 @@ const { supabaseAdmin } = require("./src/config/supabase");
 // ⏰ Import cron job functions
 // ===============================
 const retryPendingOrders = require("./src/utils/retryPendingOrders");
-const syncPendingOrders = require("./src/cron/syncOrders");
+const syncPendingOrders = require("./src/jobs/syncPendingOrders"); // ✅ updated path
 const processAutoOrders = require("./src/cron/processAutoOrders");
 
 const PORT = process.env.PORT || 5000;
@@ -42,8 +40,7 @@ app.listen(PORT, async () => {
     console.error("❌ Supabase admin client is not initialized. Check your .env file.");
   } else {
     try {
-      // 👉 Change this to a table that you know exists
-      const TEST_TABLE = "profiles"; 
+      const TEST_TABLE = "profiles"; // 👉 Change this to a table that you know exists
 
       const { data, error } = await supabaseAdmin
         .from(TEST_TABLE)
@@ -77,11 +74,11 @@ setInterval(async () => {
 }, 10 * 60 * 1000);
 
 // ===============================
-// 🔄 Sync BoostProvider Orders every 5 min
+// 🔄 Sync JAP Orders every 5 min
 // ===============================
 setInterval(async () => {
   try {
-    console.log("🔄 Syncing BoostProvider orders...");
+    console.log("🔄 Syncing JAP orders...");
     await syncPendingOrders();
   } catch (err) {
     console.error("❌ Error syncing orders:", err.message);

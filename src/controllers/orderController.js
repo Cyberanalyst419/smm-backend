@@ -1,6 +1,9 @@
 const supabase = require('../config/supabase');
 const pool = require('../config/database'); // for raw SQL
-const { placeOrder, getOrderStatus } = require('../services/apiClient');
+const axios = require('axios');
+
+const JAP_API_URL = process.env.JAP_API_URL;
+const JAP_API_KEY = process.env.JAP_API_KEY;
 
 const MAX_RETRIES = parseInt(process.env.MAX_RESUBMIT_RETRIES || "4", 10);
 
@@ -24,16 +27,18 @@ exports.createOrder = async (req, res) => {
   }
 
   try {
-    // 1. Fetch service rate
-    const { data: svc, error: serviceError } = await supabase
-      .from('services')
-      .select('rate')
-      .eq('service', service) // ✅ match provider field
-      .single();
+    // 1. Get service list from JAP to find rate
+    const japResponse = await axios.post(JAP_API_URL, {
+      key: JAP_API_KEY,
+      action: 'services'
+    });
 
-    if (serviceError || !svc) return res.status(404).json({ error: 'Service not found' });
+    const serviceData = japResponse.data.find(s => String(s.service) === String(service));
+    if (!serviceData) {
+      return res.status(404).json({ error: 'Service not found in JAP' });
+    }
 
-    const totalPriceUSD = (parseFloat(svc.rate) / 1000) * parseInt(quantity);
+    const totalPriceUSD = (parseFloat(serviceData.rate) / 1000) * parseInt(quantity);
 
     // 2. Check wallet balance
     const { data: wallet, error: walletError } = await supabase
@@ -46,32 +51,39 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
-    // 3. Place external API order
+    // 3. Place order on JAP
     let apiOrderId = null;
     let status = 'processing';
     try {
-      const apiResponse = await placeOrder({ service, link, quantity });
-      if (!apiResponse.order) throw new Error('No order ID returned from API');
-      apiOrderId = apiResponse.order;
+      const orderResponse = await axios.post(JAP_API_URL, {
+        key: JAP_API_KEY,
+        action: 'add',
+        service,
+        link,
+        quantity
+      });
+
+      if (!orderResponse.data.order) throw new Error('No order ID returned from JAP');
+      apiOrderId = orderResponse.data.order;
     } catch (apiErr) {
-      console.warn('⚠️ External API failed, queueing order');
+      console.warn('⚠️ JAP API failed, queueing order');
       status = 'queued';
     }
 
-    // 4. Insert order
+    // 4. Insert order record
     const { data: newOrder, error: insertError } = await supabase
       .from('orders')
       .insert([{
         user_id: userId,
-        service, // ✅ provider service ID
-        service_name,
+        service,
+        service_name: service_name || serviceData.name,
         link,
         quantity: parseInt(quantity),
         price_usd: parseFloat(price_usd) || totalPriceUSD,
         price_converted: parseFloat(price_converted) || totalPriceUSD,
         currency: currency || 'USD',
-        type: type || 'N/A',
-        category: category || 'N/A',
+        type: type || serviceData.type || 'N/A',
+        category: category || serviceData.category || 'N/A',
         status,
         external_order_id: apiOrderId,
         progress: 0,
@@ -82,7 +94,7 @@ exports.createOrder = async (req, res) => {
 
     if (insertError) throw insertError;
 
-    // 5. Deduct balance if started
+    // 5. Deduct balance immediately if order is active
     if (status === 'processing') {
       const { error: updateError } = await supabase
         .from('wallets')
@@ -123,8 +135,14 @@ exports.checkOrderStatus = async (req, res) => {
     if (error || !order) return res.status(404).json({ error: 'Order not found' });
     if (order.user_id !== userId) return res.status(403).json({ error: 'Unauthorized access' });
 
-    const status = await getOrderStatus(order.external_order_id);
-    res.json({ status });
+    // Call JAP to get status
+    const statusResponse = await axios.post(JAP_API_URL, {
+      key: JAP_API_KEY,
+      action: 'status',
+      order: order.external_order_id
+    });
+
+    res.json(statusResponse.data);
 
   } catch (err) {
     console.error('Status check failed:', err.message);
@@ -167,12 +185,12 @@ exports.getTotalSpent = async (req, res) => {
   }
 };
 
-// 🔁 Admin - Resubmit failed/queued order (to implement if needed)
+// 🔁 Admin - Resubmit failed/queued order
 exports.resubmitOrder = async (req, res) => {
-  // TODO: Implement retry logic with provider API
+  // TODO: implement retry with JAP
 };
 
-// 💸 Manual refund (trigger refund_order_balance and delete)
+// 💸 Manual refund
 exports.refundOrder = async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
@@ -196,7 +214,6 @@ exports.refundOrder = async (req, res) => {
       [userId, order.price_usd]
     );
 
-    // Delete order
     await pool.query(`DELETE FROM orders WHERE id = $1`, [id]);
 
     res.json({ message: 'Order refunded and removed', refundedAmount: order.price_usd });
@@ -206,10 +223,7 @@ exports.refundOrder = async (req, res) => {
   }
 };
 
-// 📦 User fetches own orders (optional, keep if needed)
-exports.getUserOrders = async (req, res) => { /* optional */ };
-
-// ❌ Delete order (manual refund if pending)
+// ❌ Delete order
 exports.deleteOrder = async (req, res) => {
   const { order_id } = req.params;
   const userId = req.user.id;

@@ -1,37 +1,40 @@
-// src/controllers/serviceController.js
-const supabase = require('../config/supabase').supabase;
+const axios = require('axios');
 
-// 🔹 Get all services
+// 🔹 Fetch services directly from JAP
 exports.getAllServices = async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('services')
-      .select('*')
-      .order('platform', { ascending: true });
+    const response = await axios.post(process.env.JAP_API_URL, {
+      key: process.env.JAP_API_KEY,
+      action: 'services'
+    });
 
-    if (error) throw error;
-
-    res.status(200).json(data);
+    res.status(200).json(response.data);
   } catch (err) {
-    console.error('⚠️ Services Fetch Error:', err.message);
+    console.error('⚠️ JAP Services Fetch Error:', err.message);
     res.status(500).json({ message: 'Failed to fetch services', error: err.message });
   }
 };
 
-// 🔹 Get services by platform (e.g., Instagram, TikTok)
+// 🔹 Filter JAP services by platform (Instagram, TikTok, etc.)
 exports.getByPlatform = async (req, res) => {
   const { platform } = req.params;
+
   try {
-    const { data, error } = await supabase
-      .from('services')
-      .select('*')
-      .ilike('platform', `%${platform}%`);
+    const response = await axios.post(process.env.JAP_API_URL, {
+      key: process.env.JAP_API_KEY,
+      action: 'services'
+    });
 
-    if (error) throw error;
+    const services = response.data;
 
-    res.status(200).json(data);
+    // Filter services that match the requested platform
+    const filtered = services.filter(service =>
+      service.category.toLowerCase().includes(platform.toLowerCase())
+    );
+
+    res.status(200).json(filtered);
   } catch (err) {
-    console.error('⚠️ Platform Filter Error:', err.message);
+    console.error('⚠️ JAP Platform Filter Error:', err.message);
     res.status(500).json({ message: 'Failed to filter services', error: err.message });
   }
 };
