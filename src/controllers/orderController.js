@@ -8,32 +8,32 @@ const MAX_RETRIES = parseInt(process.env.MAX_RESUBMIT_RETRIES || "4", 10);
 exports.createOrder = async (req, res) => {
   const userId = req.user.id;
   const {
-    service_id,
+    service,          // ✅ provider service ID
     service_name,
     link,
     quantity,
     price_usd,
     price_converted,
     currency,
-    speed,
-    guarantee
+    type,
+    category
   } = req.body;
 
-  if (!service_id || !link || !quantity) {
+  if (!service || !link || !quantity) {
     return res.status(400).json({ error: 'Service, link, and quantity are required' });
   }
 
   try {
-    // 1. Fetch service price
-    const { data: service, error: serviceError } = await supabase
+    // 1. Fetch service rate
+    const { data: svc, error: serviceError } = await supabase
       .from('services')
-      .select('price')
-      .eq('id', service_id)
+      .select('rate')
+      .eq('service', service) // ✅ match provider field
       .single();
 
-    if (serviceError || !service) return res.status(404).json({ error: 'Service not found' });
+    if (serviceError || !svc) return res.status(404).json({ error: 'Service not found' });
 
-    const totalPriceUSD = parseFloat(service.price) * parseInt(quantity);
+    const totalPriceUSD = (parseFloat(svc.rate) / 1000) * parseInt(quantity);
 
     // 2. Check wallet balance
     const { data: wallet, error: walletError } = await supabase
@@ -50,7 +50,7 @@ exports.createOrder = async (req, res) => {
     let apiOrderId = null;
     let status = 'processing';
     try {
-      const apiResponse = await placeOrder({ service: service_id, link, quantity });
+      const apiResponse = await placeOrder({ service, link, quantity });
       if (!apiResponse.order) throw new Error('No order ID returned from API');
       apiOrderId = apiResponse.order;
     } catch (apiErr) {
@@ -63,15 +63,15 @@ exports.createOrder = async (req, res) => {
       .from('orders')
       .insert([{
         user_id: userId,
-        service_id,
+        service, // ✅ provider service ID
         service_name,
         link,
         quantity: parseInt(quantity),
         price_usd: parseFloat(price_usd) || totalPriceUSD,
         price_converted: parseFloat(price_converted) || totalPriceUSD,
         currency: currency || 'USD',
-        speed: speed || 'N/A',
-        guarantee: guarantee || 'N/A',
+        type: type || 'N/A',
+        category: category || 'N/A',
         status,
         external_order_id: apiOrderId,
         progress: 0,
@@ -167,9 +167,9 @@ exports.getTotalSpent = async (req, res) => {
   }
 };
 
-// 🔁 Admin - Resubmit failed/queued order (refund after max retries)
+// 🔁 Admin - Resubmit failed/queued order (to implement if needed)
 exports.resubmitOrder = async (req, res) => {
-  // same as before (keeping Supabase for now)
+  // TODO: Implement retry logic with provider API
 };
 
 // 💸 Manual refund (trigger refund_order_balance and delete)
@@ -206,8 +206,8 @@ exports.refundOrder = async (req, res) => {
   }
 };
 
-// 📦 User fetches own orders (already direct SQL in routes)
-exports.getUserOrders = async (req, res) => { /* optional keep */ };
+// 📦 User fetches own orders (optional, keep if needed)
+exports.getUserOrders = async (req, res) => { /* optional */ };
 
 // ❌ Delete order (manual refund if pending)
 exports.deleteOrder = async (req, res) => {
